@@ -35,15 +35,15 @@ if __name__=='__main__':
     df_all = df_all.rename(columns={'Total Points (Add age score to comorbidy score)' : 'CCI'})
     # exclude two patients without EEG
     df_all = df_all[(df_all.SID!='AMSD086') & (df_all.SID!='AMSD153')].reset_index(drop=True)
-    #df_all['MRN'] = df_all.MRN.astype(str)
-    #two_mrn_ids = np.where(df_all.MRN.str.contains('\('))[0]
-    #df_all.loc[two_mrn_ids, 'MRN'] = df_all.MRN.iloc[two_mrn_ids].str.replace('(','_').str.replace(')','').str.split('_', expand=True)[1]
-    #underscore_ids = np.where(df_all.MRN.str.contains('_'))[0]
-    #df_all.loc[underscore_ids, 'MRN'] = df_all.MRN.iloc[underscore_ids].str.replace('_','')
+    df_all['MRN'] = df_all.MRN.astype(str)
+    two_mrn_ids = np.where(df_all.MRN.str.contains('\('))[0]
+    df_all.loc[two_mrn_ids, 'MRN'] = df_all.MRN.iloc[two_mrn_ids].str.replace('(','_').str.replace(')','').str.split('_', expand=True)[1]
+    underscore_ids = np.where(df_all.MRN.str.contains('_'))[0]
+    df_all.loc[underscore_ids, 'MRN'] = df_all.MRN.iloc[underscore_ids].str.replace('_','')
     df_all['SID'] = df_all.SID.astype(str)
     df_all['Type of EEG (routine, LTM)'] = df_all['Type of EEG (routine, LTM)'].astype(str).str.strip()
     df_all['Race'] = df_all.Race.astype(str).str.strip()
-    #assert np.all(df_all.MRN.str.isnumeric())
+    assert np.all(df_all.MRN.str.isnumeric())
     assert len(set(df_all.SID))==len(df_all)
         
     ids = [np.where(df_all.SID==x)[0][0] for x in df_pred_all.SID]
@@ -193,5 +193,5 @@ if __name__=='__main__':
     coef = model.base_estimator.estimator.coef_.flatten()
     df_coef = pd.DataFrame(data={'feature':Xnames[~np.in1d(Xnames, worst_delirium_Xnames)], 'coef':coef})
     df_coef = df_coef.sort_values('coef', ascending=False).reset_index(drop=True)
-    df_coef.to_csv('coef_ve-cam-s.csv', index=False)
+    df_coef.to_csv('coef_cam-s-lf.csv', index=False)
 

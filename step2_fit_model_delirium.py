@@ -580,8 +580,19 @@ if __name__=='__main__':
         dfX = pd.read_excel(xls, 'X')
         dfy = pd.read_excel(xls, 'y')
         df_worst_delirium_names = pd.read_excel(xls, 'worst_delirium_names')
+        
+    # exclude repeated patients
+    exclude_repeated_pts = False
+    if exclude_repeated_pts:
+        ids = ~np.in1d(dfX.SID, ['AMSD157', 'AMSD159', 'AMSD173'])
+        dfX = dfX[ids].reset_index(drop=True)
+        dfy = dfy[ids].reset_index(drop=True)
+        suffix = '_exclude_repeated_pts'
+    else:  
+        suffix = ''
+    
     sids = dfX.SID.astype(str).values
-    #mrns = dfX.MRN.astype(str).values
+    mrns = dfX.MRN.astype(str).values
     worst_delirium_Xnames = df_worst_delirium_names.EEGName.values.astype(str)
     
     # reverse normal EEG features
@@ -592,11 +603,11 @@ if __name__=='__main__':
         dfX.loc[:,col] = 1-dfX[col]
     dfX = dfX.rename(columns={col:'no '+col for col in normal_EEG_names})
     # combine no PDR and g delta/theta slowing or GRDA
-    dfX['no PDR or g delta/theta slowing or GRDA'] = ((dfX['no PDR (Posterior dominant rhythm) (>=8 Hz); If present - specify highest freq.'] + dfX['Generalized/Diffuse delta or theta slowing or GRDA'])>0).astype(int)
-    dfX = dfX.drop(columns=['no PDR (Posterior dominant rhythm) (>=8 Hz); If present - specify highest freq.', 'Generalized/Diffuse delta or theta slowing or GRDA'])
+    #dfX['no PDR or g delta/theta slowing or GRDA'] = ((dfX['no PDR (Posterior dominant rhythm) (>=8 Hz); If present - specify highest freq.'] + dfX['Generalized/Diffuse delta or theta slowing or GRDA'])>0).astype(int)
+    #dfX = dfX.drop(columns=['no PDR (Posterior dominant rhythm) (>=8 Hz); If present - specify highest freq.', 'Generalized/Diffuse delta or theta slowing or GRDA'])
        
     ## more preprcessing
-    X = dfX.drop(columns=['SID'])#,'MRN'])
+    X = dfX.drop(columns=['SID','MRN'])
     Xnames = np.array(X.columns)
     X = X.values.astype(float)
     
@@ -694,7 +705,7 @@ if __name__=='__main__':
             cv_split[teid] = cvi
         pd.DataFrame(data={'SID':sids, 'MRN':mrns, 'y':y, 'CV':cv_split}).to_csv(cv_split_path, index=False)
     df_cv = pd.read_csv(cv_split_path)
-    #assert [len(set(df_cv.MRN[df_cv.CV==k])&set(df_cv.MRN[df_cv.CV!=k])) for k in range(Ncv)] == [0]*Ncv
+    assert [len(set(df_cv.MRN[df_cv.CV==k])&set(df_cv.MRN[df_cv.CV!=k])) for k in range(Ncv)] == [0]*Ncv
     cv_split = [df_cv.SID[df_cv.CV==i].values for i in range(Ncv)]
     
     # fit model with bootstrap
@@ -731,7 +742,7 @@ if __name__=='__main__':
             final_model = models[-1]
             print('tr score', cv_tr_score)
             print('te score', cv_te_score)
-            print(np.c_[Xnames[~np.in1d(Xnames, worst_delirium_Xnames)], coefs_bt[-1]])
+            print(pd.DataFrame(data={'name':Xnames[~np.in1d(Xnames, worst_delirium_Xnames)], 'coef':coefs_bt[-1]}).sort_values('coef')[::-1])
 
     if Nbt>0:
         print('tr score: %f [%f -- %f]'%(tr_scores_bt[0], np.percentile(tr_scores_bt[1:], 2.5), np.percentile(tr_scores_bt[1:], 97.5)))
@@ -752,10 +763,9 @@ if __name__=='__main__':
                 y_yp_cv['cvi'] = np.zeros(N)+cvi
             y_yps.append(y_yp_cv[['bti', 'cvi']+cols])
     y_yps = pd.concat(y_yps, axis=0)
-    y_yps.to_csv('cv_predictions_%s_Nbt%d.csv'%(model_type, Nbt), index=False)
+    y_yps.to_csv(f'cv_predictions_{model_type}_Nbt{Nbt}{suffix}.csv', index=False)
     
-    import pdb;pdb.set_trace()
-    with open('results_%s_Nbt%d.pickle'%(model_type, Nbt), 'wb') as ff:
+    with open(f'results_{model_type}_Nbt{Nbt}{suffix}.pickle', 'wb') as ff:
         pickle.dump({'tr_scores_bt':tr_scores_bt,
                      'te_scores_bt':te_scores_bt,
                      'coefs_bt':coefs_bt,
